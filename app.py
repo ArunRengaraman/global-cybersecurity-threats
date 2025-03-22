@@ -202,8 +202,35 @@ with tab1:
         attack_type_to_symbol = {attack: marker_symbols[i % len(marker_symbols)] for i, attack in enumerate(unique_attack_types)}
         filtered_df['Marker Symbol'] = filtered_df['Attack Type'].map(attack_type_to_symbol)
         
-        # Display map based on user selection
+        # Validate data before plotting
         if not filtered_df.empty:
+            # Ensure required columns have valid data
+            required_plot_columns = ['lat', 'lon', 'Financial_Loss_Millions', 'Attack Type', 'Marker Symbol']
+            for col in required_plot_columns:
+                if filtered_df[col].isnull().any():
+                    st.markdown(f'<div class="error-box">Error: Column "{col}" contains missing values.</div>', unsafe_allow_html=True)
+                    st.stop()
+            
+            # Ensure lat and lon are numeric
+            filtered_df['lat'] = pd.to_numeric(filtered_df['lat'], errors='coerce')
+            filtered_df['lon'] = pd.to_numeric(filtered_df['lon'], errors='coerce')
+            filtered_df = filtered_df.dropna(subset=['lat', 'lon'])
+            
+            # Ensure Financial_Loss_Millions is numeric and positive
+            filtered_df['Financial_Loss_Millions'] = pd.to_numeric(filtered_df['Financial_Loss_Millions'], errors='coerce')
+            filtered_df = filtered_df[filtered_df['Financial_Loss_Millions'] > 0]
+            
+            # Ensure Marker Symbol contains valid symbols
+            valid_symbols = set(marker_symbols)
+            if not filtered_df['Marker Symbol'].isin(valid_symbols).all():
+                st.markdown(
+                    f'<div class="error-box">Error: Invalid marker symbols in "Marker Symbol" column. '
+                    f'Valid symbols are: {", ".join(valid_symbols)}</div>',
+                    unsafe_allow_html=True
+                )
+                st.stop()
+            
+            # Display map based on user selection
             if map_type == "2D Map":
                 # 2D Map with scatter_mapbox
                 fig_map = px.scatter_mapbox(
