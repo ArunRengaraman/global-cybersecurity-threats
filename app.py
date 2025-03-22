@@ -176,12 +176,12 @@ with tab1:
             value=(float(df['Financial_Loss_Millions'].min()), float(df['Financial_Loss_Millions'].max()))
         )
         
-        # Filter data based on user selections
+        # Filter data based on user selections and create a deep copy
         filtered_df = df[
             (df['Year'].between(*year_range)) &
             (df['Attack Type'].isin(attack_types)) &
             (df['Financial_Loss_Millions'].between(*financial_loss_range))
-        ]
+        ].copy()
         
         # Map type selection (2D or 3D)
         map_type = st.selectbox("Select Map Type", options=["2D Map", "3D Globe"], index=0)
@@ -230,46 +230,94 @@ with tab1:
                 )
                 st.stop()
             
+            # Convert hover data columns to string to avoid type issues
+            hover_columns = ['Country', 'Year', 'Attack Type', 'Target Industry', 
+                             'Financial_Loss_Millions', 'Number of Affected Users', 'Resolution_Time_Hours']
+            for col in hover_columns:
+                filtered_df[col] = filtered_df[col].astype(str)
+            
             # Display map based on user selection
             if map_type == "2D Map":
-                # 2D Map with scatter_mapbox
-                fig_map = px.scatter_mapbox(
-                    filtered_df,
-                    lat='lat',
-                    lon='lon',
-                    size='Financial_Loss_Millions',
-                    color='Attack Type',
-                    symbol='Marker Symbol',  # Differentiate attack types with symbols
-                    hover_data={
-                        'Country': True,
-                        'Year': True,
-                        'Attack Type': True,
-                        'Target Industry': True,
-                        'Financial_Loss_Millions': True,
-                        'Number of Affected Users': True,
-                        'Resolution_Time_Hours': True
-                    },
-                    title="Global Cybersecurity Incidents (2D Map)",
-                    zoom=1,
-                    height=800
-                )
-                fig_map.update_layout(
-                    mapbox_style=map_style,
-                    margin={"r":0, "t":50, "l":0, "b":0},
-                    mapbox=dict(
-                        center=dict(lat=20, lon=0),
-                        zoom=1
-                    ),
-                    legend=dict(
-                        title="Attack Type",
-                        orientation="h",
-                        yanchor="bottom",
-                        y=1.02,
-                        xanchor="center",
-                        x=0.5
+                try:
+                    # 2D Map with scatter_mapbox (without symbol parameter as a fallback)
+                    fig_map = px.scatter_mapbox(
+                        filtered_df,
+                        lat='lat',
+                        lon='lon',
+                        size='Financial_Loss_Millions',
+                        color='Attack Type',
+                        # Temporarily remove symbol to test if it's the issue
+                        # symbol='Marker Symbol',  # Differentiate attack types with symbols
+                        hover_data={
+                            'Country': True,
+                            'Year': True,
+                            'Attack Type': True,
+                            'Target Industry': True,
+                            'Financial_Loss_Millions': True,
+                            'Number of Affected Users': True,
+                            'Resolution_Time_Hours': True
+                        },
+                        title="Global Cybersecurity Incidents (2D Map)",
+                        zoom=1,
+                        height=800
                     )
-                )
-                st.plotly_chart(fig_map, use_container_width=True)
+                    fig_map.update_layout(
+                        mapbox_style=map_style,
+                        margin={"r":0, "t":50, "l":0, "b":0},
+                        mapbox=dict(
+                            center=dict(lat=20, lon=0),
+                            zoom=1
+                        ),
+                        legend=dict(
+                            title="Attack Type",
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        )
+                    )
+                    st.plotly_chart(fig_map, use_container_width=True)
+                except Exception as e:
+                    # If the above fails, try with symbol parameter
+                    st.markdown(f'<div class="warning-box">Failed to render map without symbols: {str(e)}. Trying with symbols...</div>', unsafe_allow_html=True)
+                    fig_map = px.scatter_mapbox(
+                        filtered_df,
+                        lat='lat',
+                        lon='lon',
+                        size='Financial_Loss_Millions',
+                        color='Attack Type',
+                        symbol='Marker Symbol',  # Differentiate attack types with symbols
+                        hover_data={
+                            'Country': True,
+                            'Year': True,
+                            'Attack Type': True,
+                            'Target Industry': True,
+                            'Financial_Loss_Millions': True,
+                            'Number of Affected Users': True,
+                            'Resolution_Time_Hours': True
+                        },
+                        title="Global Cybersecurity Incidents (2D Map)",
+                        zoom=1,
+                        height=800
+                    )
+                    fig_map.update_layout(
+                        mapbox_style=map_style,
+                        margin={"r":0, "t":50, "l":0, "b":0},
+                        mapbox=dict(
+                            center=dict(lat=20, lon=0),
+                            zoom=1
+                        ),
+                        legend=dict(
+                            title="Attack Type",
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        )
+                    )
+                    st.plotly_chart(fig_map, use_container_width=True)
             
             else:
                 # 3D Globe with scatter_geo
