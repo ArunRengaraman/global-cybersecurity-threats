@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
-# Predefined dictionary of country coordinates to avoid geocoding issues
+# Predefined dictionary of country coordinates
 COUNTRY_COORDINATES = {
     'China': (35.8617, 104.1954),
     'India': (20.5937, 78.9629),
@@ -131,6 +132,13 @@ with tab1:
             (df['Financial_Loss_Millions'].between(*financial_loss_range))
         ]
         
+        # Map style selection
+        map_style = st.selectbox(
+            "Select Map Style",
+            options=["open-street-map", "carto-positron", "carto-darkmatter", "stamen-terrain"],
+            index=0
+        )
+        
         # Display map using Plotly scatter_mapbox
         if not filtered_df.empty:
             fig_map = px.scatter_mapbox(
@@ -139,14 +147,26 @@ with tab1:
                 lon='lon',
                 size='Financial_Loss_Millions',
                 color='Attack Type',
-                hover_data=['Country', 'Year', 'Financial_Loss_Millions', 'Number of Affected Users'],
+                hover_data={
+                    'Country': True,
+                    'Year': True,
+                    'Attack Type': True,
+                    'Target Industry': True,
+                    'Financial_Loss_Millions': True,
+                    'Number of Affected Users': True,
+                    'Resolution_Time_Hours': True
+                },
                 title="Global Cybersecurity Incidents",
                 zoom=1,
-                height=600
+                height=800  # Increased height for a larger map
             )
             fig_map.update_layout(
-                mapbox_style="open-street-map",
-                margin={"r":0,"t":50,"l":0,"b":0}
+                mapbox_style=map_style,
+                margin={"r":0, "t":50, "l":0, "b":0},
+                mapbox=dict(
+                    center=dict(lat=20, lon=0),  # Center the map for better global view
+                    zoom=1
+                )
             )
             st.plotly_chart(fig_map, use_container_width=True)
         else:
@@ -167,7 +187,10 @@ with tab2:
             ]
             
             if not filtered_df.empty:
-                # Visualization 1: Financial Loss by Country
+                # Section 1: Financial Loss and User Impact
+                st.subheader("Financial Loss and User Impact")
+                
+                # Visualization 1: Financial Loss by Country (Bar Chart)
                 fig1 = px.bar(
                     filtered_df.groupby('Country', as_index=False)['Financial_Loss_Millions'].sum(),
                     x='Country',
@@ -178,7 +201,7 @@ with tab2:
                 fig1.update_layout(xaxis_tickangle=45)
                 st.plotly_chart(fig1, use_container_width=True)
                 
-                # Visualization 2: Financial Loss vs Affected Users
+                # Visualization 2: Financial Loss vs Affected Users (Scatter Plot)
                 fig2 = px.scatter(
                     filtered_df,
                     x='Number of Affected Users',
@@ -193,6 +216,83 @@ with tab2:
                     }
                 )
                 st.plotly_chart(fig2, use_container_width=True)
+                
+                # Section 2: Trends Over Time
+                st.subheader("Trends Over Time")
+                
+                # Visualization 3: Financial Loss Over Time (Line Plot)
+                fig3 = px.line(
+                    filtered_df.groupby(['Year', 'Country'], as_index=False)['Financial_Loss_Millions'].sum(),
+                    x='Year',
+                    y='Financial_Loss_Millions',
+                    color='Country',
+                    title="Financial Loss Over Time by Country (Filtered Data)",
+                    labels={'Financial_Loss_Millions': 'Financial Loss (in Million $)'},
+                    markers=True
+                )
+                st.plotly_chart(fig3, use_container_width=True)
+                
+                # Section 3: Distribution of Attacks
+                st.subheader("Distribution of Attacks")
+                
+                # Visualization 4: Distribution of Attack Types (Pie Chart)
+                fig4 = px.pie(
+                    filtered_df,
+                    names='Attack Type',
+                    title="Distribution of Attack Types (Filtered Data)",
+                    hole=0.3  # Donut chart style
+                )
+                st.plotly_chart(fig4, use_container_width=True)
+                
+                # Visualization 5: Distribution of Target Industries (Pie Chart)
+                fig5 = px.pie(
+                    filtered_df,
+                    names='Target Industry',
+                    title="Distribution of Target Industries (Filtered Data)",
+                    hole=0.3
+                )
+                st.plotly_chart(fig5, use_container_width=True)
+                
+                # Section 4: Attack Patterns
+                st.subheader("Attack Patterns")
+                
+                # Visualization 6: Heatmap of Attack Types by Country
+                heatmap_data = filtered_df.groupby(['Country', 'Attack Type']).size().reset_index(name='Count')
+                fig6 = px.density_heatmap(
+                    heatmap_data,
+                    x='Country',
+                    y='Attack Type',
+                    z='Count',
+                    title="Heatmap of Attack Types by Country (Filtered Data)",
+                    color_continuous_scale='Viridis'
+                )
+                fig6.update_layout(xaxis_tickangle=45)
+                st.plotly_chart(fig6, use_container_width=True)
+                
+                # Section 5: Distribution Analysis
+                st.subheader("Distribution Analysis")
+                
+                # Visualization 7: Box Plot of Financial Loss by Attack Type
+                fig7 = px.box(
+                    filtered_df,
+                    x='Attack Type',
+                    y='Financial_Loss_Millions',
+                    title="Distribution of Financial Loss by Attack Type (Filtered Data)",
+                    labels={'Financial_Loss_Millions': 'Financial Loss (in Million $)'}
+                )
+                fig7.update_layout(xaxis_tickangle=45)
+                st.plotly_chart(fig7, use_container_width=True)
+                
+                # Visualization 8: Box Plot of Resolution Time by Target Industry
+                fig8 = px.box(
+                    filtered_df,
+                    x='Target Industry',
+                    y='Resolution_Time_Hours',
+                    title="Distribution of Resolution Time by Target Industry (Filtered Data)",
+                    labels={'Resolution_Time_Hours': 'Resolution Time (Hours)'}
+                )
+                fig8.update_layout(xaxis_tickangle=45)
+                st.plotly_chart(fig8, use_container_width=True)
             else:
                 st.warning("No data matching the selected filters for visualizations.")
         except Exception as e:
