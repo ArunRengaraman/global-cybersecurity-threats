@@ -1,27 +1,20 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from geopy.geocoders import Nominatim
-import time
 
-# Cache geocoding results to avoid repeated calls
-@st.cache_data
-def geocode_countries(countries):
-    geolocator = Nominatim(user_agent="cyber_map")
-    coords = {}
-    for country in countries:
-        try:
-            location = geolocator.geocode(country)
-            if location:
-                coords[country] = (location.latitude, location.longitude)
-            else:
-                coords[country] = (None, None)
-            # Respect Nominatim's usage policy: 1 request per second
-            time.sleep(1)
-        except Exception as e:
-            st.warning(f"Geocoding failed for {country}: {str(e)}")
-            coords[country] = (None, None)
-    return coords
+# Predefined dictionary of country coordinates to avoid geocoding issues
+COUNTRY_COORDINATES = {
+    'China': (35.8617, 104.1954),
+    'India': (20.5937, 78.9629),
+    'UK': (55.3781, -3.4360),
+    'Germany': (51.1657, 10.4515),
+    'France': (46.6034, 1.8883),
+    'Australia': (-25.2744, 133.7751),
+    'Russia': (61.5240, 105.3188),
+    'Brazil': (-14.2350, -51.9253),
+    'Japan': (36.2048, 138.2529),
+    'USA': (37.0902, -95.7129)
+}
 
 @st.cache_data
 def load_data():
@@ -36,8 +29,11 @@ def load_data():
         df.columns = df.columns.str.strip()
         
         # Check for required columns
-        required_columns = ['Country', 'Year', 'Attack Type', 'Financial Loss (in Million $)', 
-                           'Number of Affected Users', 'Incident Resolution Time (in Hours)']
+        required_columns = [
+            'Country', 'Year', 'Attack Type', 'Target Industry', 'Financial Loss (in Million $)',
+            'Number of Affected Users', 'Attack Source', 'Security Vulnerability Type',
+            'Defense Mechanism Used', 'Incident Resolution Time (in Hours)'
+        ]
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
             st.error(f"Missing columns in the DataFrame: {', '.join(missing_columns)}")
@@ -65,16 +61,16 @@ def load_data():
         # Ensure Resolution Time is positive for scatter plot sizing
         df['Resolution_Time_Hours'] = df['Resolution_Time_Hours'].clip(lower=1)
         
-        # Geocode countries
-        unique_countries = df['Country'].unique()
-        coords = geocode_countries(unique_countries)
-        
-        # Add coordinates to DataFrame
-        df['lat'] = df['Country'].map(lambda x: coords[x][0])
-        df['lon'] = df['Country'].map(lambda x: coords[x][1])
+        # Add coordinates using predefined dictionary
+        df['lat'] = df['Country'].map(lambda x: COUNTRY_COORDINATES.get(x, (None, None))[0])
+        df['lon'] = df['Country'].map(lambda x: COUNTRY_COORDINATES.get(x, (None, None))[1])
         
         # Drop rows with invalid coordinates
+        initial_len = len(df)
         df = df.dropna(subset=['lat', 'lon'])
+        if len(df) < initial_len:
+            st.warning(f"Dropped {initial_len - len(df)} rows due to missing coordinates for some countries. "
+                       f"Supported countries: {', '.join(COUNTRY_COORDINATES.keys())}")
         
         return df
     except FileNotFoundError:
@@ -135,7 +131,7 @@ with tab1:
             (df['Financial_Loss_Millions'].between(*financial_loss_range))
         ]
         
-        # Display map using Plotly scatter_mapbox for more customization
+        # Display map using Plotly scatter_mapbox
         if not filtered_df.empty:
             fig_map = px.scatter_mapbox(
                 filtered_df,
@@ -156,7 +152,7 @@ with tab1:
         else:
             st.warning("No data matching the selected filters.")
     else:
-        st.warning("No data available to display the map.")
+        st.warning("No data available to display the map. This may be due to missing coordinates or data loading issues.")
 
 with tab2:
     st.header("Analytical Visualizations")
