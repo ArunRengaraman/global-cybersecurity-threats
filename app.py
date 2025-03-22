@@ -22,23 +22,9 @@ def load_data():
     try:
         # Load data from CSV
         df = pd.read_csv('Global_Cybersecurity_Threats_2015-2024.csv', delimiter=",")
-        
-        # Debug: Print column names to identify potential issues
-        st.write("Columns in the DataFrame:", df.columns.tolist())
-        
-        # Strip whitespace from column names
-        df.columns = df.columns.str.strip()
-        
-        # Check for required columns
-        required_columns = [
-            'Country', 'Year', 'Attack Type', 'Target Industry', 'Financial Loss (in Million $)',
-            'Number of Affected Users', 'Attack Source', 'Security Vulnerability Type',
-            'Defense Mechanism Used', 'Incident Resolution Time (in Hours)'
-        ]
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            st.error(f"Missing columns in the DataFrame: {', '.join(missing_columns)}")
-            st.stop()
+    
+
+    
         
         # Rename columns for easier access
         df = df.rename(columns={
@@ -87,13 +73,6 @@ df = load_data()
 # Main app
 st.title("Cybersecurity Incident Dashboard 🌐")
 st.sidebar.header("Filter Controls")
-
-# Debugging option to show DataFrame structure
-if st.checkbox("Show Debug Info"):
-    st.write("DataFrame columns:", list(df.columns))
-    st.write("DataFrame dtypes:", df.dtypes.to_dict())
-    st.write("DataFrame preview:", df.head())
-    st.write("Missing values:", df.isnull().sum().to_dict())
 
 # Create tabs for map and analytics
 tab1, tab2 = st.tabs(["World Map Visualization", "Dynamic Analytics"])
