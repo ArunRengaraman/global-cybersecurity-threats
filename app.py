@@ -6,23 +6,24 @@ from geopy.geocoders import Nominatim
 @st.cache_data
 def load_data():
     try:
-        # Load data
-        df = pd.read_csv('Global_Cybersecurity_Threats_2015-2024.csv')
+        # Load data from CSV
+        df = pd.read_csv('Global_Cybersecurity_Threats_2015-2024.csv', delimiter=";")
         
-        # Check for required columns
-        required_columns = ['Country', 'Year', 'Attack Type', 'Financial Loss (in Million $)', 'Number of Affected Users', 'Incident Resolution Time (in Hours)']
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            st.error(f"Missing columns in the DataFrame: {', '.join(missing_columns)}")
-            st.stop()
+        # Debug: Print column names to identify potential issues
+        st.write("Columns in the DataFrame:", df.columns.tolist())
         
-        # Clean column names
+        # Strip whitespace from column names
         df.columns = df.columns.str.strip()
         
-        # Convert Year to numeric
+        # Check if 'Country' column exists
+        if 'Country' not in df.columns:
+            st.error("The 'Country' column is missing. Please check the CSV file for correct column names.")
+            st.stop()
+        
+        # Convert 'Year' to numeric type
         df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
         
-        # Geocoding function
+        # Geocoding function to get coordinates
         geolocator = Nominatim(user_agent="cyber_map")
         def get_coords(country):
             try:
@@ -31,7 +32,7 @@ def load_data():
             except:
                 return 0, 0
         
-        # Add coordinates
+        # Add latitude and longitude columns
         df[['lat', 'lon']] = df['Country'].apply(lambda x: pd.Series(get_coords(x)))
         
         return df
@@ -46,18 +47,18 @@ df = load_data()
 st.title("Cybersecurity Incident Dashboard 🌐")
 st.sidebar.header("Filter Controls")
 
-# Debug information
+# Debugging option to show DataFrame structure
 if st.checkbox("Show Debug Info"):
     st.write("DataFrame columns:", df.columns)
-    st.write("DataFrame info:", df.info())
+    st.write("DataFrame preview:", df.head())
 
-# Create tabs
+# Create tabs for map and analytics
 tab1, tab2 = st.tabs(["World Map Visualization", "Dynamic Analytics"])
 
 with tab1:
     st.header("Global Threat Map")
     
-    # Map filters
+    # Sidebar filters for year range and attack types
     year_range = st.sidebar.slider(
         "Select Year Range",
         min_value=int(df['Year'].min()),
@@ -65,32 +66,23 @@ with tab1:
         value=(int(df['Year'].min()), int(df['Year'].max()))
     )
     
-    try:
-        attack_types = st.sidebar.multiselect(
-            "Select Attack Types",
-            options=df['Attack Type'].unique(),
-            default=df['Attack Type'].unique()
-        )
-    except KeyError:
-        st.error("Column 'Attack Type' not found in the DataFrame. Please check your CSV file.")
-        attack_types = []
+    attack_types = st.sidebar.multiselect(
+        "Select Attack Types",
+        options=df['Attack Type'].unique() if 'Attack Type' in df.columns else [],
+        default=df['Attack Type'].unique() if 'Attack Type' in df.columns else []
+    )
     
-    # Filter data
+    # Filter data based on user selections
     filtered_df = df[
         (df['Year'].between(*year_range)) &
         (df['Attack Type'].isin(attack_types))
     ]
     
-    # Display map
+    # Display map or warning if no data matches filters
     if not filtered_df.empty:
-        st.map(filtered_df,
-               latitude='lat',
-               longitude='lon',
-               size='Financial Loss (in Million $)',
-               color='#FF0000',
-               use_container_width=True)
+        st.map(filtered_df, latitude='lat', longitude='lon', use_container_width=True)
     else:
-        st.warning("No data matching the selected filters")
+        st.warning("No data matching the selected filters.")
 
 with tab2:
     st.header("Analytical Visualizations")
@@ -105,7 +97,7 @@ with tab2:
         )
         st.plotly_chart(fig1, use_container_width=True)
         
-        # Visualization 2: Loss vs Affected Users
+        # Visualization 2: Financial Loss vs Affected Users
         fig2 = px.scatter(
             df,
             x='Number of Affected Users',
@@ -120,4 +112,4 @@ with tab2:
 
 # Sidebar info
 st.sidebar.markdown("---")
-st.sidebar.info("ℹ️ Use the filters to explore cybersecurity incidents globally")
+st.sidebar.info("ℹ️ Use the filters to explore cybersecurity incidents globally.")
