@@ -7,7 +7,7 @@ from geopy.geocoders import Nominatim
 def load_data():
     try:
         # Load data from CSV
-        df = pd.read_csv('Global_Cybersecurity_Threats_2015-2024.csv', delimiter=";")
+        df = pd.read_csv('Global_Cybersecurity_Threats_2015-2024.csv',delimiter=",")
         
         # Debug: Print column names to identify potential issues
         st.write("Columns in the DataFrame:", df.columns.tolist())
