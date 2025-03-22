@@ -17,14 +17,80 @@ COUNTRY_COORDINATES = {
     'USA': (37.0902, -95.7129)
 }
 
+# Custom CSS for a cleaner UI
+st.markdown(
+    """
+    <style>
+    .main-title {
+        font-size: 36px;
+        font-weight: bold;
+        color: #1E90FF;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .sidebar .sidebar-content {
+        background-color: #f0f2f6;
+        padding: 20px;
+    }
+    .sidebar-header {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 20px;
+    }
+    .section-header {
+        font-size: 22px;
+        font-weight: bold;
+        color: #2E8B57;
+        margin-top: 30px;
+        margin-bottom: 10px;
+    }
+    .warning-box {
+        background-color: #FFF3CD;
+        color: #856404;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .error-box {
+        background-color: #F8D7DA;
+        color: #721C24;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .footer {
+        text-align: center;
+        font-size: 14px;
+        color: #666;
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 @st.cache_data
 def load_data():
     try:
         # Load data from CSV
         df = pd.read_csv('Global_Cybersecurity_Threats_2015-2024.csv', delimiter=",")
-    
-
-    
+        
+        # Strip whitespace from column names
+        df.columns = df.columns.str.strip()
+        
+        # Check for required columns
+        required_columns = [
+            'Country', 'Year', 'Attack Type', 'Target Industry', 'Financial Loss (in Million $)',
+            'Number of Affected Users', 'Attack Source', 'Security Vulnerability Type',
+            'Defense Mechanism Used', 'Incident Resolution Time (in Hours)'
+        ]
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            st.markdown(f'<div class="error-box">Missing columns in the DataFrame: {", ".join(missing_columns)}</div>', unsafe_allow_html=True)
+            st.stop()
         
         # Rename columns for easier access
         df = df.rename(columns={
@@ -56,23 +122,29 @@ def load_data():
         initial_len = len(df)
         df = df.dropna(subset=['lat', 'lon'])
         if len(df) < initial_len:
-            st.warning(f"Dropped {initial_len - len(df)} rows due to missing coordinates for some countries. "
-                       f"Supported countries: {', '.join(COUNTRY_COORDINATES.keys())}")
+            st.markdown(
+                f'<div class="warning-box">Dropped {initial_len - len(df)} rows due to missing coordinates for some countries. '
+                f'Supported countries: {", ".join(COUNTRY_COORDINATES.keys())}</div>',
+                unsafe_allow_html=True
+            )
         
         return df
     except FileNotFoundError:
-        st.error("The file 'Global_Cybersecurity_Threats_2015-2024.csv' was not found. Please upload the correct file.")
+        st.markdown('<div class="error-box">The file "Global_Cybersecurity_Threats_2015-2024.csv" was not found. Please upload the correct file.</div>', unsafe_allow_html=True)
         return pd.DataFrame()
     except Exception as e:
-        st.error(f"Error loading data: {str(e)}")
+        st.markdown(f'<div class="error-box">Error loading data: {str(e)}</div>', unsafe_allow_html=True)
         return pd.DataFrame()
 
 # Load and cache data
 df = load_data()
 
 # Main app
-st.title("Cybersecurity Incident Dashboard 🌐")
-st.sidebar.header("Filter Controls")
+st.markdown('<div class="main-title">Cybersecurity Incident Dashboard 🌐</div>', unsafe_allow_html=True)
+st.markdown("Explore global cybersecurity incidents from 2015 to 2024 with interactive maps and detailed analytics.", unsafe_allow_html=True)
+
+# Sidebar
+st.sidebar.markdown('<div class="sidebar-header">Filter Controls</div>', unsafe_allow_html=True)
 
 # Create tabs for map and analytics
 tab1, tab2 = st.tabs(["World Map Visualization", "Dynamic Analytics"])
@@ -137,21 +209,24 @@ with tab1:
                 },
                 title="Global Cybersecurity Incidents",
                 zoom=1,
-                height=800  # Increased height for a larger map
+                height=800
             )
             fig_map.update_layout(
                 mapbox_style=map_style,
                 margin={"r":0, "t":50, "l":0, "b":0},
                 mapbox=dict(
-                    center=dict(lat=20, lon=0),  # Center the map for better global view
+                    center=dict(lat=20, lon=0),
                     zoom=1
                 )
             )
             st.plotly_chart(fig_map, use_container_width=True)
         else:
-            st.warning("No data matching the selected filters.")
+            st.markdown('<div class="warning-box">No data matching the selected filters.</div>', unsafe_allow_html=True)
     else:
-        st.warning("No data available to display the map. This may be due to missing coordinates or data loading issues.")
+        st.markdown(
+            '<div class="warning-box">No data available to display the map. This may be due to missing coordinates or data loading issues.</div>',
+            unsafe_allow_html=True
+        )
 
 with tab2:
     st.header("Analytical Visualizations")
@@ -167,7 +242,7 @@ with tab2:
             
             if not filtered_df.empty:
                 # Section 1: Financial Loss and User Impact
-                st.subheader("Financial Loss and User Impact")
+                st.markdown('<div class="section-header">Financial Loss and User Impact</div>', unsafe_allow_html=True)
                 
                 # Visualization 1: Financial Loss by Country (Bar Chart)
                 fig1 = px.bar(
@@ -197,7 +272,7 @@ with tab2:
                 st.plotly_chart(fig2, use_container_width=True)
                 
                 # Section 2: Trends Over Time
-                st.subheader("Trends Over Time")
+                st.markdown('<div class="section-header">Trends Over Time</div>', unsafe_allow_html=True)
                 
                 # Visualization 3: Financial Loss Over Time (Line Plot)
                 fig3 = px.line(
@@ -212,14 +287,14 @@ with tab2:
                 st.plotly_chart(fig3, use_container_width=True)
                 
                 # Section 3: Distribution of Attacks
-                st.subheader("Distribution of Attacks")
+                st.markdown('<div class="section-header">Distribution of Attacks</div>', unsafe_allow_html=True)
                 
                 # Visualization 4: Distribution of Attack Types (Pie Chart)
                 fig4 = px.pie(
                     filtered_df,
                     names='Attack Type',
                     title="Distribution of Attack Types (Filtered Data)",
-                    hole=0.3  # Donut chart style
+                    hole=0.3
                 )
                 st.plotly_chart(fig4, use_container_width=True)
                 
@@ -233,7 +308,7 @@ with tab2:
                 st.plotly_chart(fig5, use_container_width=True)
                 
                 # Section 4: Attack Patterns
-                st.subheader("Attack Patterns")
+                st.markdown('<div class="section-header">Attack Patterns</div>', unsafe_allow_html=True)
                 
                 # Visualization 6: Heatmap of Attack Types by Country
                 heatmap_data = filtered_df.groupby(['Country', 'Attack Type']).size().reset_index(name='Count')
@@ -249,7 +324,7 @@ with tab2:
                 st.plotly_chart(fig6, use_container_width=True)
                 
                 # Section 5: Distribution Analysis
-                st.subheader("Distribution Analysis")
+                st.markdown('<div class="section-header">Distribution Analysis</div>', unsafe_allow_html=True)
                 
                 # Visualization 7: Box Plot of Financial Loss by Attack Type
                 fig7 = px.box(
@@ -273,12 +348,18 @@ with tab2:
                 fig8.update_layout(xaxis_tickangle=45)
                 st.plotly_chart(fig8, use_container_width=True)
             else:
-                st.warning("No data matching the selected filters for visualizations.")
+                st.markdown('<div class="warning-box">No data matching the selected filters for visualizations.</div>', unsafe_allow_html=True)
         except Exception as e:
-            st.error(f"Error creating visualizations: {str(e)}")
+            st.markdown(f'<div class="error-box">Error creating visualizations: {str(e)}</div>', unsafe_allow_html=True)
     else:
-        st.warning("No data available to display visualizations.")
+        st.markdown('<div class="warning-box">No data available to display visualizations.</div>', unsafe_allow_html=True)
 
 # Sidebar info
 st.sidebar.markdown("---")
 st.sidebar.info("ℹ️ Use the filters to explore cybersecurity incidents globally.")
+
+# Footer
+st.markdown(
+    '<div class="footer">Cybersecurity Incident Dashboard | Data Source: Global Cybersecurity Threats 2015-2024</div>',
+    unsafe_allow_html=True
+)
